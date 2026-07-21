@@ -43,17 +43,30 @@ flex-wrap:wrap;
   <div id="welcomeText">
     Olá! Vamos organizar suas finanças?
   </div>
-  <button onclick="changeUserName()" style="
-    background:#111827;
-    color:#fff;
-    border:none;
-    padding:6px 10px;
-    border-radius:8px;
-    font-size:12px;
-    cursor:pointer;
-  ">
-    Alterar nome
-  </button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button onclick="changeUserName()" style="
+      background:#111827;
+      color:#fff;
+      border:none;
+      padding:6px 10px;
+      border-radius:8px;
+      font-size:12px;
+      cursor:pointer;
+    ">
+      Alterar nome
+    </button>
+    <button onclick="logoutUser()" style="
+      background:#fff;
+      color:#111827;
+      border:1px solid var(--line,#cbd5e1);
+      padding:6px 10px;
+      border-radius:8px;
+      font-size:12px;
+      cursor:pointer;
+    ">
+      Sair
+    </button>
+  </div>
 </div>
 
     <div class="controls">
@@ -1064,14 +1077,28 @@ padding:16px;
     border:1px solid var(--line,#e5e7eb);
   ">
     <div style="font-size:22px;font-weight:900;margin-bottom:6px">🔒 Acesso ao Prosperis</div>
-    <div style="font-size:13px;color:var(--muted,#6b7280);margin-bottom:14px">Digite sua senha para continuar</div>
-    <input id="loginPassword" inputmode="numeric" autocomplete="current-password" type="password" placeholder="Senha"
+    <div id="authSubtitle" style="font-size:13px;color:var(--muted,#6b7280);margin-bottom:14px">Entre com seu e-mail e senha</div>
+
+    <input id="authName" type="text" placeholder="Seu nome" autocomplete="name"
+      style="display:none;width:100%;margin-bottom:10px;padding:12px 14px;border-radius:12px;border:1px solid var(--line,#cbd5e1);background:var(--surface,#fff);color:var(--text,#111827);font-size:16px;box-sizing:border-box;" />
+    <input id="authEmail" type="email" placeholder="E-mail" autocomplete="email"
       style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line,#cbd5e1);background:var(--surface,#fff);color:var(--text,#111827);font-size:16px;box-sizing:border-box;" />
-    <button id="loginEnterBtn" type="button"
+    <input id="authPassword" type="password" placeholder="Senha (mínimo 6 caracteres)" autocomplete="current-password"
+      style="width:100%;margin-top:10px;padding:12px 14px;border-radius:12px;border:1px solid var(--line,#cbd5e1);background:var(--surface,#fff);color:var(--text,#111827);font-size:16px;box-sizing:border-box;" />
+
+    <button id="authSubmitBtn" type="button"
       style="width:100%;margin-top:12px;padding:12px 14px;border-radius:12px;border:none;background:#f59e0b;color:#111827;font-weight:800;font-size:15px;cursor:pointer;">
       Entrar
     </button>
-    <div id="loginError" style="margin-top:10px;font-size:12px;color:#ef4444;display:none">Senha incorreta</div>
+
+    <div id="authError" style="margin-top:10px;font-size:12px;color:#ef4444;display:none"></div>
+
+    <div style="margin-top:16px;font-size:13px;text-align:center">
+      <a id="authToggleModeBtn" href="javascript:void(0)" style="color:var(--muted,#6b7280);text-decoration:underline">Não tem conta? Criar conta</a>
+    </div>
+    <div style="margin-top:8px;font-size:13px;text-align:center">
+      <a id="authForgotPasswordBtn" href="javascript:void(0)" style="color:var(--muted,#6b7280);text-decoration:underline">Esqueci minha senha</a>
+    </div>
   </div>
 
 </div>
