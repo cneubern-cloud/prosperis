@@ -31,7 +31,7 @@
     button.ghost{background:#eef2ff;color:#3554d1;border:1px solid #dbe4ff}
     button.danger{background:#fff;color:var(--bad);border:1px solid #fecaca}
     .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px}
-    .kpis{display:grid;grid-template-columns:1.4fr repeat(5,1fr);gap:8px;margin-bottom:12px}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
     .kpi{min-height:56px;display:flex;flex-direction:column;justify-content:center;padding:8px 10px;position:relative;overflow:hidden}
     .kpi::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:#dbe4ff}
     .kpi.good-accent::before{background:var(--good)}
@@ -96,7 +96,7 @@
       display:grid;grid-template-columns:1.4fr 1fr auto;gap:8px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:12px;background:#fbfcff;
     }
     .category-item{grid-template-columns:64px 1.1fr 100px 1.3fr auto}
-    @media (max-width:1020px){.kpis{grid-template-columns:repeat(3,1fr)}.right-grid{grid-template-columns:1fr}.category-item,.rule-item{grid-template-columns:1fr}}
+    @media (max-width:1020px){.kpis{grid-template-columns:repeat(2,1fr)}.right-grid{grid-template-columns:1fr}.category-item,.rule-item{grid-template-columns:1fr}}
     @media (max-width:680px){.kpis{grid-template-columns:repeat(2,1fr)}.detail-kpis{grid-template-columns:repeat(2,1fr)}.cards-list{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
     @media (max-width:480px){.wrap{padding:10px}h1{font-size:21px}.kpis,.detail-kpis{grid-template-columns:1fr}.cards-list{grid-template-columns:1fr}}
 
@@ -500,11 +500,9 @@ input, select, textarea{
 
 <div id="welcomeBanner" style="
 margin:10px 0 14px 0;
-padding:12px 14px;
-border-radius:12px;
-background:linear-gradient(135deg,#f59e0b,#fb923c);
-color:#111827;
-font-weight:700;
+padding:4px 2px;
+color:#374151;
+font-weight:600;
 font-size:14px;
 display:flex;
 align-items:center;
@@ -515,30 +513,17 @@ flex-wrap:wrap;
   <div id="welcomeText">
     Olá! Vamos organizar suas finanças?
   </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <button onclick="changeUserName()" style="
-      background:#111827;
-      color:#fff;
-      border:none;
-      padding:6px 10px;
-      border-radius:8px;
-      font-size:12px;
-      cursor:pointer;
-    ">
-      Alterar nome
-    </button>
-    <button onclick="logoutUser()" style="
-      background:#fff;
-      color:#111827;
-      border:1px solid var(--line,#cbd5e1);
-      padding:6px 10px;
-      border-radius:8px;
-      font-size:12px;
-      cursor:pointer;
-    ">
-      Sair
-    </button>
-  </div>
+  <button onclick="logoutUser()" style="
+    background:transparent;
+    color:#6b7280;
+    border:1px solid var(--line,#cbd5e1);
+    padding:5px 12px;
+    border-radius:8px;
+    font-size:12px;
+    cursor:pointer;
+  ">
+    Sair
+  </button>
 </div>
 
     <div class="controls">
@@ -562,6 +547,25 @@ flex-wrap:wrap;
 <div class="prosperis-card-subtitle">Organização Financeira</div>
   </div>
 </div>
+
+<section class="card" style="margin-bottom:12px;padding:12px 14px" id="smartAlertsPanel">
+  <details class="expandable-panel" open>
+    <summary>
+      <div class="expandable-summary">
+        <div class="expandable-title">
+          <h3 style="margin:0">Avisos inteligentes</h3>
+          <span class="pill" id="smartAlertsBadge">Sem dados</span>
+        </div>
+        <span class="expandable-caret">▼</span>
+      </div>
+    </summary>
+    <div class="expandable-body">
+<div id="smartAlertsList" class="category-list" style="gap:6px"></div>
+    <p class="footer-note" id="smartAlertsNote" style="margin-top:8px">Avisos compactos com foco no que mais pesou no mês.</p>
+  
+    </div>
+  </details>
+</section>
 
 <section class="kpis">
     <div class="card kpi neutral-accent"><div class="label">Saldo inicial</div><div class="value" id="saldoInicialKpi">R$ 0,00</div></div>
@@ -608,24 +612,6 @@ flex-wrap:wrap;
     <p class="footer-note" id="cmpCatNote" style="margin-top:8px">Selecione a categoria e os dois meses para comparar.</p>
   </section>
 
-<section class="card" style="margin-bottom:12px;padding:12px 14px" id="smartAlertsPanel">
-  <details class="expandable-panel" open>
-    <summary>
-      <div class="expandable-summary">
-        <div class="expandable-title">
-          <h3 style="margin:0">Avisos inteligentes</h3>
-          <span class="pill" id="smartAlertsBadge">Sem dados</span>
-        </div>
-        <span class="expandable-caret">▼</span>
-      </div>
-    </summary>
-    <div class="expandable-body">
-<div id="smartAlertsList" class="category-list" style="gap:6px"></div>
-    <p class="footer-note" id="smartAlertsNote" style="margin-top:8px">Avisos compactos com foco no que mais pesou no mês.</p>
-  
-    </div>
-  </details>
-</section>
 
 <section class="card" style="margin-bottom:12px" id="rankingPanel">
   <details class="expandable-panel" open>
@@ -2667,8 +2653,9 @@ function updateWelcome(){
   el.textContent = "Olá! Vamos organizar suas finanças?";
   db.collection("users").doc(auth.currentUser.uid).get()
     .then((doc) => {
-      const nome = doc.exists ? doc.data().nome : null;
-      el.textContent = "Olá, " + (nome || auth.currentUser.email) + "! Vamos organizar suas finanças?";
+      const nomeCompleto = doc.exists ? doc.data().nome : null;
+      const primeiroNome = nomeCompleto ? nomeCompleto.trim().split(/\s+/)[0] : null;
+      el.textContent = "Olá, " + (primeiroNome || auth.currentUser.email) + "! Vamos organizar suas finanças?";
     })
     .catch(() => {
       el.textContent = "Olá, " + auth.currentUser.email + "! Vamos organizar suas finanças?";
