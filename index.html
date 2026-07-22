@@ -564,12 +564,10 @@ flex-wrap:wrap;
 </div>
 
 <section class="kpis">
-    <div class="card kpi neutral-accent"><div class="label">Arquivo</div><div class="value" style="font-size:14px" id="arquivoInfo">Nenhum</div></div>
     <div class="card kpi neutral-accent"><div class="label">Saldo inicial</div><div class="value" id="saldoInicialKpi">R$ 0,00</div></div>
     <div class="card kpi good-accent"><div class="label">Entradas</div><div class="value good" id="entradasKpi">R$ 0,00</div></div>
     <div class="card kpi bad-accent"><div class="label">Gastos</div><div class="value bad" id="saidasKpi">R$ 0,00</div></div>
     <div class="card kpi neutral-accent"><div class="label">Saldo final</div><div class="value" id="saldoFinalKpi">R$ 0,00</div></div>
-    <div class="card kpi neutral-accent"><div class="label">Lançamentos</div><div class="value" id="qtdeKpi">0</div></div>
   </section>
 
 
@@ -752,6 +750,7 @@ flex-wrap:wrap;
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <span class="pill" id="periodoInfo">Sem dados</span>
           <button class="secondary" id="showReceitasBtn" type="button" onclick="openReceitasDetail()">Ver receitas</button>
+          <button class="secondary" id="showAllTransactionsBtn" type="button" onclick="openAllTransactionsDetail()">Ver todos os lançamentos</button>
         </div>
       </div>
 
@@ -1056,9 +1055,9 @@ flex-wrap:wrap;
     </div>
 
     <div class="detail-kpis">
-      <div class="detail-box"><div class="label">Meta</div><div class="small-value" id="detailBudget">R$ 0,00</div></div>
-      <div class="detail-box"><div class="label">Gasto</div><div class="small-value bad" id="detailSpent">R$ 0,00</div></div>
-      <div class="detail-box"><div class="label">Restante</div><div class="small-value" id="detailRemaining">R$ 0,00</div></div>
+      <div class="detail-box"><div class="label" id="detailBudgetLabel">Meta</div><div class="small-value" id="detailBudget">R$ 0,00</div></div>
+      <div class="detail-box"><div class="label" id="detailSpentLabel">Gasto</div><div class="small-value bad" id="detailSpent">R$ 0,00</div></div>
+      <div class="detail-box"><div class="label" id="detailRemainingLabel">Restante</div><div class="small-value" id="detailRemaining">R$ 0,00</div></div>
       <div class="detail-box"><div class="label">Dias</div><div class="small-value" id="detailDays">0</div></div>
     </div>
 
@@ -1732,7 +1731,7 @@ function categoryTotals(data){
 function getCurrentCategoryRows(data){
   const search = normalizeText(document.getElementById('detailSearch').value);
   return data
-    .filter(t => t.categoria === selectedCategory)
+    .filter(t => selectedCategory === '__ALL__' || t.categoria === selectedCategory)
     .filter(t => !selectedSubcategoryFilter || (t.subcategoria || '') === selectedSubcategoryFilter)
     .filter(t => !search || normalizeText(t.descricao).includes(search))
     .sort((a,b) => b.data - a.data || a.descricao.localeCompare(b.descricao));
@@ -2832,6 +2831,25 @@ let detailsCollapsed = false;
 
 let detailMode = 'rows';
 
+// Aviso curto que aparece e some sozinho — usado pra confirmar ações que
+// mudam algo que pode sumir da tela (ex.: mudar categoria de um lançamento).
+function showToast(message){
+  let toast = document.getElementById('prosperisToast');
+  if (!toast){
+    toast = document.createElement('div');
+    toast.id = 'prosperisToast';
+    toast.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);' +
+      'background:#111827;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;' +
+      'z-index:10000;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:90vw;text-align:center;' +
+      'opacity:0;transition:opacity .2s;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.style.opacity = '1';
+  clearTimeout(toast._timeoutId);
+  toast._timeoutId = setTimeout(() => { toast.style.opacity = '0'; }, 2600);
+}
+
 function refreshEntryCategoryOptions(type='expense'){
   const sel = document.getElementById('entryCategory');
   if (!sel) return;
@@ -2892,7 +2910,7 @@ function saveManualEntry(){
 }
 
 function categoryOptionsHtml(selected){
-  return CATEGORY_RULES.filter(c => c.name !== 'Receitas').map(c =>
+  return CATEGORY_RULES.map(c =>
     `<option value="${c.name}" ${selected === c.name ? 'selected' : ''}>${c.icon} ${c.name}</option>`
   ).join('');
 }
@@ -2900,7 +2918,7 @@ function categoryOptionsHtml(selected){
 function populateCategoryActionSelect(){
   const sel = document.getElementById('detailCategoryAction');
   sel.innerHTML = '<option value="">Alterar categoria dos itens filtrados…</option>' +
-    CATEGORY_RULES.filter(c => c.name !== 'Receitas').map(c => `<option value="${c.name}">${c.icon} ${c.name}</option>`).join('');
+    CATEGORY_RULES.map(c => `<option value="${c.name}">${c.icon} ${c.name}</option>`).join('');
 }
 
 function renderCategoryDetail(data){
@@ -2930,25 +2948,33 @@ function renderCategoryDetail(data){
     return;
   }
 
-  const icon = CATEGORY_RULES.find(c => c.name === selectedCategory)?.icon || '📌';
-  const categoryRows = data.filter(t => t.categoria === selectedCategory);
-  const foundSubcats = [...new Set(categoryRows.map(t => (t.subcategoria || '').trim()).filter(Boolean))];
-  const manualSubcats = getManualSubcategories(selectedCategory);
+  const isAll = selectedCategory === '__ALL__';
+  const icon = isAll ? '📋' : (CATEGORY_RULES.find(c => c.name === selectedCategory)?.icon || '📌');
+  const categoryRows = data.filter(t => isAll || t.categoria === selectedCategory);
+  const foundSubcats = isAll ? [] : [...new Set(categoryRows.map(t => (t.subcategoria || '').trim()).filter(Boolean))];
+  const manualSubcats = isAll ? [] : getManualSubcategories(selectedCategory);
   const subcats = [...new Set([...foundSubcats, ...manualSubcats])].sort((a,b) => a.localeCompare(b,'pt-BR'));
 
   if (subcategoryFilter){
-    const current = selectedSubcategoryFilter || '';
-    subcategoryFilter.innerHTML = '<option value="">Todas as subcategorias</option>' +
-      subcats.map(s => `<option value="${s}">${s}</option>`).join('');
-    if ([...subcategoryFilter.options].some(o => o.value === current)) subcategoryFilter.value = current;
-    else {
+    if (isAll){
+      subcategoryFilter.innerHTML = '<option value="">Selecione uma categoria p/ filtrar subcategoria</option>';
+      subcategoryFilter.disabled = true;
       selectedSubcategoryFilter = '';
-      subcategoryFilter.value = '';
+    } else {
+      subcategoryFilter.disabled = false;
+      const current = selectedSubcategoryFilter || '';
+      subcategoryFilter.innerHTML = '<option value="">Todas as subcategorias</option>' +
+        subcats.map(s => `<option value="${s}">${s}</option>`).join('');
+      if ([...subcategoryFilter.options].some(o => o.value === current)) subcategoryFilter.value = current;
+      else {
+        selectedSubcategoryFilter = '';
+        subcategoryFilter.value = '';
+      }
     }
   }
 
   const rows = getCurrentCategoryRows(data);
-  const baseRows = selectedSubcategoryFilter
+  const baseRows = (!isAll && selectedSubcategoryFilter)
     ? categoryRows.filter(t => (t.subcategoria || '') === selectedSubcategoryFilter)
     : categoryRows;
 
@@ -2960,13 +2986,33 @@ function renderCategoryDetail(data){
   const st = statusFor(spent, budget);
   const uniqueDays = new Set(baseRows.map(t => t.data.toISOString().slice(0,10)));
 
-  title.textContent = `${icon} ${selectedCategory}${selectedSubcategoryFilter ? ' • ' + selectedSubcategoryFilter : ''}`;
-  status.textContent = isReceita ? 'Entradas' : (selectedSubcategoryFilter ? (budget > 0 ? st.text : 'Sem meta') : st.text);
-  status.className = `pill ${isReceita ? 'good' : st.cls}`;
-  budgetEl.textContent = isReceita ? formatBRL(incomes) : formatBRL(budget);
-  spentEl.textContent = isReceita ? formatBRL(incomes) : formatBRL(spent);
-  remainingEl.textContent = isReceita ? formatBRL(0) : formatBRL(remaining);
-  remainingEl.className = `small-value ${isReceita ? 'good' : (remaining >= 0 ? 'good' : 'bad')}`;
+  const budgetLabel = document.getElementById('detailBudgetLabel');
+  const spentLabel = document.getElementById('detailSpentLabel');
+  const remainingLabel = document.getElementById('detailRemainingLabel');
+
+  if (isAll){
+    title.textContent = '📋 Todos os lançamentos';
+    status.textContent = 'Visão geral';
+    status.className = 'pill';
+    if (budgetLabel) budgetLabel.textContent = 'Entradas';
+    if (spentLabel) spentLabel.textContent = 'Saídas';
+    if (remainingLabel) remainingLabel.textContent = 'Saldo';
+    budgetEl.textContent = formatBRL(incomes);
+    spentEl.textContent = formatBRL(spent);
+    remainingEl.textContent = formatBRL(incomes - spent);
+    remainingEl.className = `small-value ${(incomes - spent) >= 0 ? 'good' : 'bad'}`;
+  } else {
+    if (budgetLabel) budgetLabel.textContent = 'Meta';
+    if (spentLabel) spentLabel.textContent = 'Gasto';
+    if (remainingLabel) remainingLabel.textContent = 'Restante';
+    title.textContent = `${icon} ${selectedCategory}${selectedSubcategoryFilter ? ' • ' + selectedSubcategoryFilter : ''}`;
+    status.textContent = isReceita ? 'Entradas' : (selectedSubcategoryFilter ? (budget > 0 ? st.text : 'Sem meta') : st.text);
+    status.className = `pill ${isReceita ? 'good' : st.cls}`;
+    budgetEl.textContent = isReceita ? formatBRL(incomes) : formatBRL(budget);
+    spentEl.textContent = isReceita ? formatBRL(incomes) : formatBRL(spent);
+    remainingEl.textContent = isReceita ? formatBRL(0) : formatBRL(remaining);
+    remainingEl.className = `small-value ${isReceita ? 'good' : (remaining >= 0 ? 'good' : 'bad')}`;
+  }
   daysEl.textContent = uniqueDays.size;
 
   tableWrap.style.display = detailMode === 'rows' ? 'block' : 'none';
@@ -2987,10 +3033,13 @@ function renderCategoryDetail(data){
   table.querySelectorAll('select[data-row-category]').forEach(sel => {
     sel.addEventListener('change', e => {
       const i = Number(e.target.dataset.rowCategory), newCat = e.target.value;
-      learnRuleFromDescription(allTransactions[i].descricao, newCat);
+      const desc = allTransactions[i].descricao;
+      learnRuleFromDescription(desc, newCat);
       allTransactions[i].categoria = newCat;
       renderAll();
       renderRuleList();
+      const icon = CATEGORY_RULES.find(c => c.name === newCat)?.icon || '';
+      showToast(`"${desc}" movido para ${icon} ${newCat}`);
     });
   });
 
@@ -3027,7 +3076,9 @@ function renderCategoryDetail(data){
     dayEntries.map(([day, info]) => `<div class="day-item"><div class="day-top"><strong>${day}</strong><span class="${isReceita ? 'good' : 'bad'}">${formatBRL(info.total)}</span></div><div class="footer-note">${info.items.length} lançamento(s)</div></div>`).join('')
   }</div>` : '<div class="empty">Nenhum total diário para mostrar.</div>';
 
-  if (subGoalsTable){
+  if (subGoalsTable && isAll){
+    subGoalsTable.innerHTML = '<tr><td colspan="6" class="empty">Selecione uma categoria específica para gerenciar subcategorias e metas.</td></tr>';
+  } else if (subGoalsTable){
     const expenseRows = categoryRows.filter(t => t.valor < 0);
     const summary = {};
     expenseRows.forEach(t => {
@@ -3121,9 +3172,10 @@ function renderCategoryDetail(data){
     }
   }
 
-  if (!baseRows.length) note.textContent = `Não houve lançamentos em ${selectedCategory}${selectedSubcategoryFilter ? ' / ' + selectedSubcategoryFilter : ''} no período filtrado.`;
+  const categoryLabel = isAll ? 'todos os lançamentos' : `${selectedCategory}${selectedSubcategoryFilter ? ' / ' + selectedSubcategoryFilter : ''}`;
+  if (!baseRows.length) note.textContent = `Não houve lançamentos em ${categoryLabel} no período filtrado.`;
   else if (rows.length !== baseRows.length && document.getElementById('detailSearch').value.trim()) note.textContent = `Mostrando ${rows.length} de ${baseRows.length} lançamento(s) após a busca.`;
-  else note.textContent = `Mostrando ${rows.length} lançamento(s) de ${selectedCategory}${selectedSubcategoryFilter ? ' / ' + selectedSubcategoryFilter : ''}.`;
+  else note.textContent = `Mostrando ${rows.length} lançamento(s) de ${categoryLabel}.`;
 }
 
 function renderCategoryConfig(){
@@ -3226,6 +3278,24 @@ function openReceitasDetail(){
   }
 }
 
+function openAllTransactionsDetail(){
+  try{
+    selectedCategory = '__ALL__';
+    selectedSubcategoryFilter = '';
+    const detailFilter = document.getElementById('detailSubcategoryFilter');
+    if (detailFilter) detailFilter.value = '';
+    if (typeof openDetailModal === 'function'){
+      openDetailModal('__ALL__');
+      return;
+    }
+    if (typeof renderCategoryDetail === 'function'){
+      renderCategoryDetail(filteredTransactions ? filteredTransactions() : []);
+    }
+  }catch(e){
+    console.error(e);
+  }
+}
+
 document.addEventListener('keydown', function(e){
   if (e.key === 'Escape'){
     closeDetailModal();
@@ -3252,13 +3322,11 @@ function renderKPIs(data){
   const monthValue = document.getElementById('monthFilter')?.value || 'all';
   const openingForView = getOpeningBalanceForFilter(monthValue);
   const saldoFinal = openingForView + entradas - gastos;
-  document.getElementById('arquivoInfo').textContent = currentFileName;
   document.getElementById('saldoInicialKpi').textContent = formatBRL(openingForView);
   document.getElementById('entradasKpi').textContent = formatBRL(entradas);
   document.getElementById('saidasKpi').textContent = formatBRL(gastos);
   document.getElementById('saldoFinalKpi').textContent = formatBRL(saldoFinal);
   document.getElementById('saldoFinalKpi').className = 'value ' + (saldoFinal >= 0 ? 'good' : 'bad');
-  document.getElementById('qtdeKpi').textContent = data.length;
   document.getElementById('periodoInfo').textContent = data.length ? `${data[0].data.toLocaleDateString('pt-BR')} a ${data[data.length-1].data.toLocaleDateString('pt-BR')}` : 'Sem dados';
 }
 
@@ -3303,7 +3371,7 @@ function renderCategoryCards(data){
   const cats = [...cards];
 
   if (!selectedCategory && cats.length) selectedCategory = cats[0].cat.name;
-  if (selectedCategory && !cats.find(x => x.cat.name === selectedCategory) && selectedCategory !== 'Receitas') selectedCategory = cats[0]?.cat.name || null;
+  if (selectedCategory && !cats.find(x => x.cat.name === selectedCategory) && selectedCategory !== 'Receitas' && selectedCategory !== '__ALL__') selectedCategory = cats[0]?.cat.name || null;
 
   wrap.innerHTML = cats.map(({cat, spent, budget, remaining, pct, st, dailyRemainingHint}) => `
     <div class="goal-card state-${st.cls || 'good'} ${selectedCategory === cat.name ? 'active' : ''}" data-cat="${cat.name}">
@@ -3806,12 +3874,10 @@ function clearAll(){
   document.getElementById('detailSearch').value = '';
   if (document.getElementById('detailSubcategoryFilter')) document.getElementById('detailSubcategoryFilter').innerHTML = '<option value="">Todas as subcategorias</option>';
   document.getElementById('monthFilter').innerHTML = '<option value="all">Todos os meses</option>';
-  document.getElementById('arquivoInfo').textContent = 'Nenhum';
   document.getElementById('saldoInicialKpi').textContent = formatBRL(0);
   document.getElementById('entradasKpi').textContent = formatBRL(0);
   document.getElementById('saidasKpi').textContent = formatBRL(0);
   document.getElementById('saldoFinalKpi').textContent = formatBRL(0);
-  document.getElementById('qtdeKpi').textContent = '0';
   document.getElementById('periodoInfo').textContent = 'Sem dados';
   document.getElementById('metaAlertBox').style.display = 'none'; document.getElementById('metaAlertBox').innerHTML = ''; document.getElementById('categoryCards').innerHTML = '<div class="empty">Importe o extrato para ver as metas.</div>';
   document.getElementById('summaryTable').innerHTML = '<tr><td colspan="6" class="empty">Importe o extrato para preencher.</td></tr>';
@@ -4020,11 +4086,14 @@ document.getElementById('detailCategoryAction').addEventListener('change', (e) =
   const newCat = e.target.value;
   if (!newCat || !selectedCategory) return;
   const rows = getCurrentCategoryRows(filteredTransactions());
+  let count = 0;
   rows.forEach(row => {
     const i = allTransactions.indexOf(row);
-    if (i >= 0){ learnRuleFromDescription(allTransactions[i].descricao, newCat); allTransactions[i].categoria = newCat; }
+    if (i >= 0){ learnRuleFromDescription(allTransactions[i].descricao, newCat); allTransactions[i].categoria = newCat; count++; }
   });
   e.target.value = ''; renderAll();
+  const icon = CATEGORY_RULES.find(c => c.name === newCat)?.icon || '';
+  showToast(`${count} lançamento(s) movido(s) para ${icon} ${newCat}`);
 });
 
 document.getElementById('addCategoryBtn').addEventListener('click', () => {
